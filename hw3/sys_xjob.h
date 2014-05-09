@@ -9,7 +9,6 @@
 #include <linux/sched.h>
 #include <linux/workqueue.h>
 #include <linux/delay.h>
-
 #include "sioq.h"
 
 struct jobs {

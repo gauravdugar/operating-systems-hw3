@@ -1,7 +1,7 @@
 #include "sys_xjob.h"
 
 #define CONSUMERS 2
-#define QUEUE_SIZE 10
+#define QUEUE_SIZE 5
 
 static struct workqueue_struct *superio_workqueue;
 
@@ -38,12 +38,15 @@ static int get_wid(void)
 {
 	int id = count;
 	int i = 0;
-	// do something, as it is going in infinite loop.
-	while(work_array[id] != 0 && i < 10) {
+	while(work_array[id] != 0) {
 		id = (id + 1) % QUEUE_SIZE;
 		i++;
+		if (i == QUEUE_SIZE) {
+			i = 0;
+			printk("\nget_wid in waiting now..!!\n");
+			schedule();
+		}
 	}
-	//if (i
 	return id;
 }
 
@@ -69,8 +72,6 @@ void run_sioq(work_func_t func, struct sioq_args *args)
 		// do something
 	}
 	id = get_wid();
-	if (id == -1)
-		goto out;
 	args->id = id;
 	INIT_WORK(&args->work, func);
 
@@ -80,9 +81,8 @@ void run_sioq(work_func_t func, struct sioq_args *args)
 	}
 	work_array[id] = args;
 	count = id;
-
-out:
 	mutex_unlock(&lock);
+	printk("\nMutex unlocking..!!\n");
 }
 
 int cancel_work(struct sioq_args *args)
@@ -97,9 +97,12 @@ void testPrint(struct work_struct *work)
 {
 	struct sioq_args *args = container_of(work, struct sioq_args, work);
 	int id = args->id;
+	int i = 0;
 	printk("\nID before sleep = %d,", id);
 	msleep(5000);
-	printk("\nID After sleep = %d,", id);
+	printk("\nID After sleep = %d\n,", id);
 	work_array[args->id] = 0;
+	for (i = 0; i < QUEUE_SIZE; i++)
+		printk ("%p, ", work_array[i]);
 	kfree(args);
 }

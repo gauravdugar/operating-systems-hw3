@@ -18,7 +18,7 @@ asmlinkage int xjob(void *args, int argslen)
 	int err = 0;
 	if (args == NULL)
 		return -EINVAL;
-	err = checkArgument(args, argslen);
+	//err = checkArgument(args, argslen);
 	if (err < 0)
 		return err;
 	printk("\nargslen = %d,", argslen);
@@ -41,7 +41,7 @@ static int __init init_sys_xjob(void)
 
 static void  __exit exit_sys_xjob(void)
 {
-	stop_sioq();
+	//stop_sioq();
 	if (sysptr != NULL)
 		sysptr = NULL;
 	printk(KERN_INFO "removed sys_xjob module\n");
