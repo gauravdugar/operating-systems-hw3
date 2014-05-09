@@ -1,1 +1,36 @@
-XXX: fill in HW3 readme
+			CSE-506, OPERATING SYSTEMS
+			HOMEWORK:3
+			MAY 11, 2014
+			BY: GAURAV DUGAR
+			gdugar@cs.stonybrook.edu
+______________________________________________________________________________
+
+WEBSITE_REFERENCES
+------------------
+1. http://www.gnu.org/software/libc/manual/html_node/Example-of-Getopt.html
+	Referred for getopt() to use and parse options.
+
+2. http://www.tutorialspoint.com/c_standard_library/c_function_strtol.htm
+	Referred for convert string to octal conversion, strtol().
+
+
+VALIDATIONS_IMPLEMENTED
+-----------------------
+
+
+TESTED code with
+----------------
+
+
+ENSURED
+-------
+1. No memory leaks.
+2. Proper error handling.
+3. proper coding style.
+4. No warnings and errors. (in make and wih "checkpatch.pl" also).
+5. Proper error number returned.
+6. Proper error values and message to user.
+
+
+EXTRA_CREDIT_ATOMIC_MODE
+------------------------
