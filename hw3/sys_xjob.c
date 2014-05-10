@@ -14,6 +14,7 @@ static int checkArgument(void *arg, int argslen)
 
 asmlinkage int xjob(void *args, int argslen)
 {
+	struct jobs *job;
 	struct sioq_args *x;
 	int err = 0;
 	if (args == NULL)
@@ -21,11 +22,20 @@ asmlinkage int xjob(void *args, int argslen)
 	//err = checkArgument(args, argslen);
 	if (err < 0)
 		return err;
-	printk("\nargslen = %d,", argslen);
+
+
+	job = kmalloc(sizeof(struct jobs), GFP_KERNEL);
+	printk("Before copy\n");
+	copy_from_user(job, args, sizeof(struct jobs));
+	printk("After copy\n");
+
+	if (job->work_type == CANCEL)
+		return cancel_work(job->type);
+
 	x = kmalloc(sizeof(struct sioq_args), GFP_KERNEL);
-	x->id = argslen;
+	x->id = 1;
 	run_sioq(testPrint, x);
-	printk("\nJob completed..!!");
+	err = x->id;
 	return err;
 }
 
@@ -35,13 +45,15 @@ static int __init init_sys_xjob(void)
 	if (sysptr == NULL)
 		sysptr = xjob;
 	init_sioq();
+	init_netlink();
 	counter = 0;
 	return 0;
 }
 
 static void  __exit exit_sys_xjob(void)
 {
-	//stop_sioq();
+	stop_sioq();
+	netlink_exit();
 	if (sysptr != NULL)
 		sysptr = NULL;
 	printk(KERN_INFO "removed sys_xjob module\n");

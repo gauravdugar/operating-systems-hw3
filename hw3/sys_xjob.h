@@ -10,10 +10,8 @@
 #include <linux/workqueue.h>
 #include <linux/delay.h>
 #include "sioq.h"
+#include "sys_ds.h"
 
-struct jobs {
-	const char **infiles;
-	int op;
-	void *config;
-	int flags; /*flags to change behavior of syscall*/
-};
+extern int init_netlink(void);
+extern int netlink_exit(void);
+extern void send_msg(int pid, char *msg);

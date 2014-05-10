@@ -1,6 +1,6 @@
 #include "sys_xjob.h"
 
-#define CONSUMERS 2
+#define CONSUMERS 1
 #define QUEUE_SIZE 5
 
 static struct workqueue_struct *superio_workqueue;
@@ -8,7 +8,7 @@ static struct workqueue_struct *superio_workqueue;
 struct mutex lock;
 struct sioq_args **work_array = NULL;
 static int count = -1;
-extern int counter;
+extern atomic_t counter;
 
 int init_sioq(void)
 {
@@ -65,14 +65,14 @@ void stop_sioq(void)
 void run_sioq(work_func_t func, struct sioq_args *args)
 {
 	int id;
-	printk("\nTrying to acquire lock..!!");
 	mutex_lock(&lock);
-	printk("\nMutex lock aquired..!!");
-	if (counter == QUEUE_SIZE){
-		// do something
+	if (atomic_read(&counter) == QUEUE_SIZE){
+		schedule();
 	}
 	id = get_wid();
 	args->id = id;
+	args->pid = current->pid;
+
 	INIT_WORK(&args->work, func);
 
 	init_completion(&args->comp);
@@ -81,16 +81,24 @@ void run_sioq(work_func_t func, struct sioq_args *args)
 	}
 	work_array[id] = args;
 	count = id;
+	atomic_inc(&counter);
 	mutex_unlock(&lock);
 	printk("\nMutex unlocking..!!\n");
 }
 
-int cancel_work(struct sioq_args *args)
+int cancel_work(int id)
 {
-	if(!work_pending(&args->work))
-		cancel_work_sync(&args->work);
-	work_array[args->id] = 0;
-	return 0;
+	struct sioq_args *x = work_array[id];
+	if(x == 0) {
+		printk("\nNo Work ID %d, No such work exists..!!\n", id);
+		return -4;
+ 	}
+	if(work_pending(&x->work)) {
+		cancel_work_sync(&x->work);
+		work_array[x->id] = 0;
+		return 0;
+	}
+	return -5;
 }
 
 void testPrint(struct work_struct *work)
@@ -98,10 +106,12 @@ void testPrint(struct work_struct *work)
 	struct sioq_args *args = container_of(work, struct sioq_args, work);
 	int id = args->id;
 	int i = 0;
-	printk("\nID before sleep = %d,", id);
+	printk("\nID before sleep = %d, %d,", id, work_pending(&args->work));
 	msleep(5000);
 	printk("\nID After sleep = %d\n,", id);
+	atomic_dec(&counter);
 	work_array[args->id] = 0;
+	send_msg(args->pid, "Work finished..!!");
 	for (i = 0; i < QUEUE_SIZE; i++)
 		printk ("%p, ", work_array[i]);
 	kfree(args);
