@@ -29,5 +29,5 @@ extern int init_sioq(void);
 extern void stop_sioq(void);
 extern int run_sioq(struct sioq_args *args);
 extern int cancel_work(int id);
-
+extern int list_work(void);
 #endif

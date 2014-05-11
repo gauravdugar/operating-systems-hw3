@@ -26,7 +26,7 @@ int init_msg()
 		return 0;
 }
 
-int get_msg()
+char *get_msg()
 {
 	memset(&src_addr, 0, sizeof(src_addr));
 	src_addr.nl_family = AF_NETLINK;
@@ -46,9 +46,6 @@ int get_msg()
 	nlh->nlmsg_pid = getpid();
 	nlh->nlmsg_flags = 0;
 
-	//strcpy(NLMSG_DATA(nlh), "Hello");
-	//try this.. if it does not makes any difference, add it
-
 	iov.iov_base = (void *)nlh;
 	iov.iov_len = nlh->nlmsg_len;
 	msg.msg_name = (void *)&dest_addr;
@@ -58,9 +55,7 @@ int get_msg()
 
 	printf("Waiting for message from kernel\n");
 
-	/* Read message from kernel */
 	recvmsg(sock_fd, &msg, 0);
-	printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
 	close(sock_fd);
-	return 0;
+	return (char *)NLMSG_DATA(nlh);
 }

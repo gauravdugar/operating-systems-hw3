@@ -62,19 +62,19 @@ int calc_hash(char *hashkey, struct file *file, char **hash)
 	}
 	i_size = i_size_read(file->f_dentry->d_inode);
 	while (offset < i_size) {
-		int rbuf_len;
+		int read_len;
 
-		rbuf_len = kernel_read(file, offset, rbuf, PAGE_SIZE);
-		if (rbuf_len < 0) {
-			rc = rbuf_len;
+		read_len = kernel_read(file, offset, rbuf, PAGE_SIZE);
+		if (read_len < 0) {
+			rc = read_len;
 			break;
 		}
-		if (rbuf_len == 0)
+		if (read_len == 0)
 			break;
-		offset += rbuf_len;
-		sg_init_one(sg, rbuf, rbuf_len);
+		offset += read_len;
+		sg_init_one(sg, rbuf, read_len);
 
-		rc = crypto_hash_update(&desc, sg, rbuf_len);
+		rc = crypto_hash_update(&desc, sg, read_len);
 		if (rc)
 			break;
 	}
@@ -92,17 +92,20 @@ out:
 	return rc;
 }
 
-int encrpt_decrypt_file(struct file *infile, struct file *outfile, char *algo, char *key, int keysize, char *iv, int enc)
+int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, char *key, int keysize, char *iv, int enc)
 {
 	struct crypto_blkcipher *tfm;
 	struct blkcipher_desc desc;
 	struct scatterlist sg[2];
 	loff_t i_size, offset = 0;
-	int rc;
+	int rc = 0;
+	int read_len = 0;
+	int write_len = 0;
 	char *input, *outbuf;
-
+	int block = 0;
 
 	tfm = crypto_alloc_blkcipher(algo, 0, CRYPTO_ALG_ASYNC);
+	block = crypto_tfm_alg_blocksize(&tfm->base);
 
 	if (IS_ERR(tfm)) {
 		printk("failed to load transform for %s \n", algo);
@@ -111,8 +114,8 @@ int encrpt_decrypt_file(struct file *infile, struct file *outfile, char *algo, c
 	}
 	desc.tfm = tfm;
 	desc.flags = 0;
-	rc = crypto_blkcipher_setkey(tfm, key, keysize);
 
+	rc = crypto_blkcipher_setkey(tfm, key, keysize);
 	if (rc) {
 		printk(KERN_ERR  "setkey() failed flags=%x\n", tfm->base.crt_flags);
 		goto out;
@@ -121,13 +124,13 @@ int encrpt_decrypt_file(struct file *infile, struct file *outfile, char *algo, c
 	input = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!input) {
 		rc = -ENOMEM;
-		printk(KERN_ERR  "kmalloc(input) failed\n");
+		printk(KERN_ERR  "kzalloc(input) failed\n");
 		goto out;
 	}
 
 	outbuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!outbuf) {
-		printk(KERN_ERR  "kmalloc(outbuf) failed\n");
+		printk(KERN_ERR  "kzalloc(outbuf) failed\n");
 		rc = -ENOMEM;
 		kfree(input);
 		goto out;
@@ -136,15 +139,20 @@ int encrpt_decrypt_file(struct file *infile, struct file *outfile, char *algo, c
 	//crypto_blkcipher_set_iv(tfm, iv, crypto_blkcipher_ivsize(tfm));
 	i_size = i_size_read(infile->f_dentry->d_inode);
 	while (offset < i_size) {
-		int rbuf_len, wbuf_len;
-
-		rbuf_len = kernel_read(infile, offset, input, PAGE_SIZE);
-		if (rbuf_len < 0) {
-			rc = rbuf_len;
+		read_len = kernel_read(infile, offset, input, PAGE_SIZE);
+		if (read_len < 0) {
+			rc = read_len;
 			break;
 		}
-		if (rbuf_len == 0)
-			break;
+
+		if(enc && read_len < PAGE_SIZE) {
+			if (read_len % block != 0) {
+				int pad = block - read_len % block;
+				write_len = read_len + pad;
+				memset(input + read_len, pad, pad);
+			} else
+				write_len = read_len;
+		}
 
 		sg_init_one(sg, input, PAGE_SIZE);
 		sg_init_one(sg + 1, outbuf, PAGE_SIZE);
@@ -153,23 +161,34 @@ int encrpt_decrypt_file(struct file *infile, struct file *outfile, char *algo, c
 			rc = crypto_blkcipher_encrypt(&desc, &sg[1], &sg[0], PAGE_SIZE);
 		}
 		else {
-			printk("\ndecrypt\n");
-			msleep(5000);
 			rc = crypto_blkcipher_decrypt(&desc, &sg[1], &sg[0], PAGE_SIZE);
 		}
 
-		printk("\nAfter Operation\n");
-		msleep(2000);
 		if (rc)
 			break;
-		wbuf_len = myWrite(outfile, outbuf, rbuf_len, offset);
-		if (wbuf_len < 0) {
-			rc = wbuf_len;
+
+		if (unlikely(!enc &&  offset + read_len >= i_size)) {
+			int pad = *(outbuf + read_len - 1);
+			write_len = read_len - pad;
+			if (pad != 0) {
+				int i = 0;
+				for (i = 1; i < pad; i++) {
+					if (*(outbuf + read_len - i - 1) != pad) {
+						write_len = read_len;
+						break;
+					}
+				}
+			}
+		}
+
+		write_len = myWrite(outfile, outbuf, write_len, offset);
+		if (write_len < 0) {
+			rc = write_len;
 			printk(KERN_ERR  "writing failed, error code:%d\n", rc);
 			break;
 		}
 
-		offset += rbuf_len;
+		offset += read_len;
 	}
 	if (rc) {
 		printk(KERN_ERR  "encryption failed, flags=0x%x, error code:%d\n", tfm->base.crt_flags, rc);

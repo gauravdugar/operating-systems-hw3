@@ -2,10 +2,13 @@ obj-m += sys_xjob_mod.o
 
 sys_xjob_mod-y += sys_xjob.o sioq.o netlinkkernel.o crypto.o file.o
 
-all: xjob user_cancel_job user_submit_job netlinkuser test
+all: xjob user_cancel_job netlinkuser crypt doCrypt checksum doCheck
 
-test: user_submit_job.o netlinkuser.o
-	gcc -o test user_submit_job.o netlinkuser.o
+doCrypt: crypt.o netlinkuser.o
+	gcc -o doCrypt crypt.o netlinkuser.o
+
+doCheck: checksum.o netlinkuser.o
+	gcc -o doCheck checksum.o netlinkuser.o
 
 netlinkuser: netlinkuser.c
 	gcc -Wall -Werror netlinkuser.c -c -o netlinkuser.o
@@ -13,14 +16,18 @@ netlinkuser: netlinkuser.c
 user_cancel_job: user_cancel_job.c
 	gcc -Wall -Werror -I/lib/modules/$(shell uname -r)/build/arch/x86/include user_cancel_job.c -g -o user_cancel_job
 
-user_submit_job: user_submit_job.c
-	gcc -Wall -Werror -I/lib/modules/$(shell uname -r)/build/arch/x86/include user_submit_job.c -c -g -o user_submit_job.o
+crypt: crypt.c
+	gcc -Wall -Werror -I/lib/modules/$(shell uname -r)/build/arch/x86/include crypt.c -c -g -o crypt.o
 
 xjob:
 	make -Wall -Werror -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
+checksum: checksum.c
+	gcc -Wall -Werror -I/lib/modules/$(shell uname -r)/build/arch/x86/include checksum.c -c -g -o checksum.o
+
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	rm -f user_submit_job
+	rm -f crypt
 	rm -f user_cancel_job
-	rm -f test
+	rm -f doCrypt
+	rm -f doCheck

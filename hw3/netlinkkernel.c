@@ -13,7 +13,6 @@ void send_msg(int pid, char *msg)
 	int msg_size;
 	int res;
 
-	printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 	msg_size=strlen(msg);
 	skb_out = nlmsg_new(msg_size,0);
 
@@ -22,19 +21,22 @@ void send_msg(int pid, char *msg)
 		printk(KERN_ERR "Failed to allocate new skb\n");
 		return;
 	}
-	nlh=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
-	NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
-	strncpy(nlmsg_data(nlh),msg,msg_size);
+	nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
+	NETLINK_CB(skb_out).dst_group = 0;
+	strncpy(nlmsg_data(nlh), msg, msg_size);
 
-	res=nlmsg_unicast(nl_sk,skb_out,pid);
+	//msleep(5000);
 
-	if(res<0)
-		printk(KERN_INFO "Error while sending bak to user\n");
+	res = nlmsg_unicast(nl_sk,skb_out,pid);
+
+	printk("\n Res = %d,\n", res);
+
+	if(res < 0)
+		printk(KERN_INFO "Error while sending back to user\n");
 }
 
 int init_netlink(void)
 {
-	printk("Entering: %s\n",__FUNCTION__);
 	nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, 0, NULL,NULL,THIS_MODULE);
 	if(!nl_sk)
 	{

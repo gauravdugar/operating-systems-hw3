@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
 	struct jobs job;
 
 	job.work_type = SUBMIT;
+
 	void *dummy = (void *)&job;
 
 	init_msg();
