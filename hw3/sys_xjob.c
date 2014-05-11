@@ -4,6 +4,7 @@ asmlinkage extern int(*sysptr)(void *args, int argslen);
 
 int counter = 0;
 
+/*
 static int checkArgument(void *arg, int argslen)
 {
 	int err = 0;
@@ -11,6 +12,7 @@ static int checkArgument(void *arg, int argslen)
 		return -EINVAL;
 	return err;
 }
+*/
 
 asmlinkage int xjob(void *args, int argslen)
 {
@@ -34,8 +36,9 @@ asmlinkage int xjob(void *args, int argslen)
 
 	x = kmalloc(sizeof(struct sioq_args), GFP_KERNEL);
 	x->id = 1;
-	run_sioq(testPrint, x);
-	err = x->id;
+	msleep(5000);
+	err = run_sioq(x);
+	x->complete = 1;
 	return err;
 }
 

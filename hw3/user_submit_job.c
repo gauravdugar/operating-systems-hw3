@@ -9,6 +9,7 @@
 #define __NR_xjob	349	/* our private syscall number */
 
 extern int get_msg();
+extern int init_msg();
 
 // parseOptions and option args to be set, for checking correctness of type and number of arguments.
 
@@ -19,6 +20,9 @@ int main(int argc, char *argv[])
 
 	job.work_type = SUBMIT;
 	void *dummy = (void *)&job;
+
+	init_msg();
+
 	rc = syscall(__NR_xjob, dummy, sizeof(job));
 
 	if (errno != 0) {

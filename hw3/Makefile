@@ -1,6 +1,6 @@
 obj-m += sys_xjob_mod.o
 
-sys_xjob_mod-y += sys_xjob.o sioq.o netlinkkernel.o
+sys_xjob_mod-y += sys_xjob.o sioq.o netlinkkernel.o crypto.o file.o
 
 all: xjob user_cancel_job user_submit_job netlinkuser test
 

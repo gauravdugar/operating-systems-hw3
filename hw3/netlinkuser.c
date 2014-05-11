@@ -15,12 +15,19 @@ struct iovec iov;
 int sock_fd;
 struct msghdr msg;
 
-int get_msg()
+int init_msg()
 {
 	sock_fd=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
-	if(sock_fd<0)
+	if(sock_fd < 0) {
+		printf("Connection Problem - %d", sock_fd);
 		return -1;
+	}
+	else
+		return 0;
+}
 
+int get_msg()
+{
 	memset(&src_addr, 0, sizeof(src_addr));
 	src_addr.nl_family = AF_NETLINK;
 	src_addr.nl_pid = getpid(); /* self pid */
