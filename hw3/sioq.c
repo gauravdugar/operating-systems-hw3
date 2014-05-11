@@ -201,7 +201,7 @@ static void __calc_hash(struct sioq_args *args)
 		__call_send_msg(args, err_code);
 		goto out;
 	} else {
-		printk("digest: %s\n", hash);
+		printk("\nDigest = %s\n", hash);
 		__call_send_msg(args, hash);
 	}
 out:

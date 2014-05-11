@@ -105,38 +105,40 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 	int block = 0;
 
 	tfm = crypto_alloc_blkcipher(algo, 0, CRYPTO_ALG_ASYNC);
-	block = crypto_tfm_alg_blocksize(&tfm->base);
 
 	if (IS_ERR(tfm)) {
-		printk("failed to load transform for %s \n", algo);
+		printk(KERN_ERR "failed to load transform for %s \n", algo);
 		rc = PTR_ERR(tfm);
 		return rc;
 	}
+
 	desc.tfm = tfm;
 	desc.flags = 0;
 
+	printk(KERN_INFO "\nKey = %s, KeySize = %d\n", key, keysize);
+	msleep(1000);
 	rc = crypto_blkcipher_setkey(tfm, key, keysize);
+	block = crypto_tfm_alg_blocksize(&tfm->base);
 	if (rc) {
-		printk(KERN_ERR  "setkey() failed flags=%x\n", tfm->base.crt_flags);
+		printk(KERN_ERR "setkey() failed flags=%x\n", tfm->base.crt_flags);
 		goto out;
 	}
 
 	input = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!input) {
 		rc = -ENOMEM;
-		printk(KERN_ERR  "kzalloc(input) failed\n");
+		printk(KERN_ERR "kzalloc(input) failed\n");
 		goto out;
 	}
 
 	outbuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!outbuf) {
-		printk(KERN_ERR  "kzalloc(outbuf) failed\n");
+		printk(KERN_ERR "kzalloc(outbuf) failed\n");
 		rc = -ENOMEM;
 		kfree(input);
 		goto out;
 	}
 
-	//crypto_blkcipher_set_iv(tfm, iv, crypto_blkcipher_ivsize(tfm));
 	i_size = i_size_read(infile->f_dentry->d_inode);
 	while (offset < i_size) {
 		read_len = kernel_read(infile, offset, input, PAGE_SIZE);
@@ -184,14 +186,15 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 		write_len = myWrite(outfile, outbuf, write_len, offset);
 		if (write_len < 0) {
 			rc = write_len;
-			printk(KERN_ERR  "writing failed, error code:%d\n", rc);
+			printk(KERN_ERR "writing failed, error code:%d\n", rc);
 			break;
 		}
 
 		offset += read_len;
 	}
+
 	if (rc) {
-		printk(KERN_ERR  "encryption failed, flags=0x%x, error code:%d\n", tfm->base.crt_flags, rc);
+		printk(KERN_ERR "encryption failed, flags=0x%x, error code:%d\n", tfm->base.crt_flags, rc);
 	}
 
 	kfree(outbuf);
