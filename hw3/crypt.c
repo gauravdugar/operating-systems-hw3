@@ -43,10 +43,11 @@ int main(int argc, char *argv[])
 	} else {
 		printf("Job Successfully Submitted, Job ID: %d\n", rc);
 		rc = atoi(get_msg());
-		if(!rc)
+		if (!rc)
 			printf("Job Successfully Completed\n");
 		else
-			printf("Error while checksum operation, error code=%d, error msg=%s\n", rc, strerror(-rc));
+			printf("Error while checksum err=%d, error=%s\n",
+				rc, strerror(-rc));
 	}
 	return 0;
 }

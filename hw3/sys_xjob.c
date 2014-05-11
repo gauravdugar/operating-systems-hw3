@@ -2,7 +2,7 @@
 
 asmlinkage extern int(*sysptr)(void *args, int argslen);
 
-int counter = 0;
+int counter;
 
 static inline int fileReadCheck(char *path)
 {
@@ -24,7 +24,7 @@ static int check_checksum_args(struct jobs *x)
 		goto out;
 	}
 	args = kzalloc(sizeof(struct checksum_args), GFP_KERNEL);
-	if(!args) {
+	if (!args) {
 		err = -ENOMEM;
 		goto out;
 	}
@@ -69,7 +69,7 @@ static int check_crypt_args(struct jobs *x)
 		goto out;
 	}
 	args = kzalloc(sizeof(struct crypt_args), GFP_KERNEL);
-	if(!args) {
+	if (!args) {
 		err = -ENOMEM;
 		goto out;
 	}
@@ -135,7 +135,7 @@ static int checkArgument(struct jobs **job, void *arg, int len)
 		goto out;
 	}
 
-	if (!(x->work_type != 1 || x->work_type != 2 || x->work_type !=3)) {
+	if (!(x->work_type != 1 || x->work_type != 2 || x->work_type != 3)) {
 		printk(KERN_ERR "Incorrect work_type %d\n", x->work_type);
 		err = -EINVAL;
 		goto out;

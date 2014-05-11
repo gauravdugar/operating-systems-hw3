@@ -6,7 +6,7 @@
 static struct workqueue_struct *superio_workqueue;
 
 struct mutex lock;
-struct sioq_args **work_array = NULL;
+struct sioq_args **work_array;
 static int count = -1;
 extern atomic_t counter;
 
@@ -18,8 +18,9 @@ int init_sioq(void)
 	superio_workqueue = create_workqueue("my_workqueue");
 	if (!IS_ERR(superio_workqueue)) {
 		workqueue_set_max_active(superio_workqueue, CONSUMERS);
-		work_array = kzalloc(sizeof(struct sioq_args) * QUEUE_SIZE, GFP_KERNEL);
-		if(work_array == NULL) {
+		work_array = kzalloc(sizeof(struct sioq_args) *
+			QUEUE_SIZE, GFP_KERNEL);
+		if (work_array == NULL) {
 			err = -ENOMEM;
 			stop_sioq();
 			return err;
@@ -37,12 +38,12 @@ static int get_wid(void)
 {
 	int id = count;
 	int i = 0;
-	while(work_array[id] != 0) {
+	while (work_array[id] != 0) {
 		id = (id + 1) % QUEUE_SIZE;
 		i++;
 		if (i == QUEUE_SIZE) {
 			i = 0;
-			printk("\nget_wid in waiting now..!!\n");
+			printk(KERN_ERR "\nget_wid in waiting now..!!\n");
 			schedule();
 		}
 	}
@@ -92,13 +93,11 @@ void stop_sioq(void)
 		destroy_workqueue(superio_workqueue);
 		superio_workqueue = NULL;
 	}
-	if(work_array) {
+	if (work_array) {
 		int i;
-		for ( i = 0; i < QUEUE_SIZE; i++) {
-			if (work_array[i] != 0) {
+		for (i = 0; i < QUEUE_SIZE; i++)
+			if (work_array[i] != 0)
 				freeMem(work_array[i]);
-			}
-		}
 		kfree(work_array);
 		work_array = NULL;
 	}
@@ -121,9 +120,9 @@ int run_sioq(struct sioq_args *args)
 {
 	int id;
 	mutex_lock(&lock);
-	if (atomic_read(&counter) == QUEUE_SIZE){
+	if (atomic_read(&counter) == QUEUE_SIZE)
 		schedule();
-	}
+
 	id = get_wid();
 	args->id = id;
 	args->pid = current->pid;
@@ -139,9 +138,9 @@ int run_sioq(struct sioq_args *args)
 
 	args->complete = 0;
 
-	while (unlikely(!queue_work(superio_workqueue, &args->work))) {
+	while (!queue_work(superio_workqueue, &args->work))
 		schedule();
-	}
+
 	mutex_unlock(&lock);
 	return id;
 }
@@ -154,11 +153,11 @@ int list_work()
 int cancel_work(int id)
 {
 	struct sioq_args *x = work_array[id];
-	if(x == 0) {
-		printk("\nNo Work ID %d, No such work exists..!!\n", id);
+	if (x == 0) {
+		printk(KERN_ERR "\nNo Work ID %d, No such work exists.\n", id);
 		return -4;
 	}
-	if(work_pending(&x->work)) {
+	if (work_pending(&x->work)) {
 		cancel_work_sync(&x->work);
 		work_array[x->id] = 0;
 		send_msg(x->pid, "Job has been cancelled..!!");
@@ -185,7 +184,7 @@ static void __calc_hash(struct sioq_args *args)
 	int err = 0;
 
 	struct checksum_args *check_arg = args->checksum_arg;
-	err_code[0] = '~'; // WHY..???
+	err_code[0] = '~';
 
 	err = myOpen(check_arg->file, O_RDONLY, 0, &file_handle);
 	if (err) {
@@ -196,7 +195,7 @@ static void __calc_hash(struct sioq_args *args)
 	}
 	err = calc_hash(check_arg->algo, file_handle, &hash);
 	myClose(&file_handle);
-	if(err) {
+	if (err) {
 		sprintf(err_code + 1, "%d", err);
 		__call_send_msg(args, err_code);
 		goto out;
@@ -205,8 +204,7 @@ static void __calc_hash(struct sioq_args *args)
 		__call_send_msg(args, hash);
 	}
 out:
-	if (hash)
-		kfree(hash);
+	kfree(hash);
 }
 
 static void __crypt_file(struct sioq_args *args, int flag)
@@ -226,7 +224,8 @@ static void __crypt_file(struct sioq_args *args, int flag)
 		return;
 	}
 
-	tmpFile = tmpName(infile->f_dentry->d_name.name, infile->f_dentry->d_name.len);
+	tmpFile = tmpName(infile->f_dentry->d_name.name,
+			infile->f_dentry->d_name.len);
 
 	err = myOpen(tmpFile, O_WRONLY | O_CREAT | O_TRUNC, 0666, &outfile);
 	if (err) {
@@ -237,11 +236,13 @@ static void __crypt_file(struct sioq_args *args, int flag)
 		return;
 	}
 
-	err = encrypt_decrypt_file(infile, outfile, arg->algo, arg->key, arg->keysize, "", flag);
+	err = encrypt_decrypt_file(infile, outfile, arg->algo,
+			arg->key, arg->keysize, "", flag);
 
-	if(err) {
+	if (err) {
 		myClose(&infile);
-		vfs_unlink(outfile->f_dentry->d_parent->d_inode, outfile->f_dentry);
+		vfs_unlink(outfile->f_dentry->d_parent->d_inode,
+			outfile->f_dentry);
 		sprintf(err_code, "%d", err);
 		__call_send_msg(args, err_code);
 		return;
@@ -252,10 +253,10 @@ static void __crypt_file(struct sioq_args *args, int flag)
 		err = vfs_rename(dir, olddentry, dir, newdentry);
 		if (err) {
 			myClose(&infile);
-			vfs_unlink(outfile->f_dentry->d_parent->d_inode, outfile->f_dentry);
+			vfs_unlink(outfile->f_dentry->d_parent->d_inode,
+				outfile->f_dentry);
 			__call_send_msg(args, err_code);
-		}
-		else {
+		} else {
 			__call_send_msg(args, "0");
 		}
 	}

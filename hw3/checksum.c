@@ -40,9 +40,10 @@ int main(int argc, char *argv[])
 
 	printf("Job Successfully Submitted, Job ID: %d\n", rc);
 	checksum = get_msg();
-	if(*checksum != '~')
+	if (*checksum != '~')
 		printf("Checksum %s\n", checksum);
 	else
-		printf("Error while checksum operation, error code=%d, error msg=%s\n", atoi(checksum+1), strerror (-atoi(checksum+1)));
+		printf("Error while checksum, err=%d, msg=%s\n",
+			atoi(checksum+1), strerror(-atoi(checksum + 1)));
 	return 0;
 }

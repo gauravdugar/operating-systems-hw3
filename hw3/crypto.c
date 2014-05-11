@@ -92,7 +92,8 @@ out:
 	return rc;
 }
 
-int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, char *key, int keysize, char *iv, int enc)
+int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo,
+		char *key, int keysize, char *iv, int enc)
 {
 	struct crypto_blkcipher *tfm;
 	struct blkcipher_desc desc;
@@ -107,7 +108,7 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 	tfm = crypto_alloc_blkcipher(algo, 0, CRYPTO_ALG_ASYNC);
 
 	if (IS_ERR(tfm)) {
-		printk(KERN_ERR "failed to load transform for %s \n", algo);
+		printk(KERN_ERR "failed to load transform for %s\n", algo);
 		rc = PTR_ERR(tfm);
 		return rc;
 	}
@@ -120,7 +121,8 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 	rc = crypto_blkcipher_setkey(tfm, key, keysize);
 	block = crypto_tfm_alg_blocksize(&tfm->base);
 	if (rc) {
-		printk(KERN_ERR "setkey() failed flags=%x\n", tfm->base.crt_flags);
+		printk(KERN_ERR "setkey() failed flags=%x\n",
+			tfm->base.crt_flags);
 		goto out;
 	}
 
@@ -147,7 +149,7 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 			break;
 		}
 
-		if(enc && read_len < PAGE_SIZE) {
+		if (enc && read_len < PAGE_SIZE) {
 			if (read_len % block != 0) {
 				int pad = block - read_len % block;
 				write_len = read_len + pad;
@@ -159,12 +161,12 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 		sg_init_one(sg, input, PAGE_SIZE);
 		sg_init_one(sg + 1, outbuf, PAGE_SIZE);
 
-		if (enc) {
-			rc = crypto_blkcipher_encrypt(&desc, &sg[1], &sg[0], PAGE_SIZE);
-		}
-		else {
-			rc = crypto_blkcipher_decrypt(&desc, &sg[1], &sg[0], PAGE_SIZE);
-		}
+		if (enc)
+			rc = crypto_blkcipher_encrypt(&desc, &sg[1],
+					&sg[0], PAGE_SIZE);
+		else
+			rc = crypto_blkcipher_decrypt(&desc, &sg[1],
+					&sg[0], PAGE_SIZE);
 
 		if (rc)
 			break;
@@ -175,7 +177,8 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 			if (pad != 0) {
 				int i = 0;
 				for (i = 1; i < pad; i++) {
-					if (*(outbuf + read_len - i - 1) != pad) {
+					if (*(outbuf + read_len - i - 1)
+							!= pad) {
 						write_len = read_len;
 						break;
 					}
@@ -193,9 +196,9 @@ int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, 
 		offset += read_len;
 	}
 
-	if (rc) {
-		printk(KERN_ERR "encryption failed, flags=0x%x, error code:%d\n", tfm->base.crt_flags, rc);
-	}
+	if (rc)
+		printk(KERN_ERR "encrypt failed, flags=0x%x, error code:%d\n",
+			tfm->base.crt_flags, rc);
 
 	kfree(outbuf);
 	kfree(input);

@@ -4,7 +4,8 @@
 #include <linux/export.h>
 
 #define NETLINK_USER 31
-struct sock *nl_sk = NULL;
+
+struct sock *nl_sk;
 
 void send_msg(int pid, char *msg)
 {
@@ -13,11 +14,10 @@ void send_msg(int pid, char *msg)
 	int msg_size;
 	int res;
 
-	msg_size=strlen(msg);
-	skb_out = nlmsg_new(msg_size,0);
+	msg_size = strlen(msg);
+	skb_out = nlmsg_new(msg_size, 0);
 
-	if(!skb_out)
-	{
+	if (!skb_out) {
 		printk(KERN_ERR "Failed to allocate new skb\n");
 		return;
 	}
@@ -25,21 +25,17 @@ void send_msg(int pid, char *msg)
 	NETLINK_CB(skb_out).dst_group = 0;
 	strncpy(nlmsg_data(nlh), msg, msg_size);
 
-	//msleep(5000);
+	res = nlmsg_unicast(nl_sk, skb_out, pid);
 
-	res = nlmsg_unicast(nl_sk,skb_out,pid);
-
-	printk("\n Res = %d,\n", res);
-
-	if(res < 0)
+	if (res < 0)
 		printk(KERN_INFO "Error while sending back to user\n");
 }
 
 int init_netlink(void)
 {
-	nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, 0, NULL,NULL,THIS_MODULE);
-	if(!nl_sk)
-	{
+	nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, 0,
+			NULL, NULL, THIS_MODULE);
+	if (!nl_sk) {
 		printk(KERN_ALERT "Error creating socket.\n");
 		return -10;
 	}

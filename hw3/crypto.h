@@ -13,6 +13,7 @@
 #include "file.h"
 
 extern int calc_hash(char *hash, struct file *file, char **);
-extern int encrypt_decrypt_file(struct file *infile, struct file *outfile, char *algo, char *key, int keysize, char *iv, int enc);
+extern int encrypt_decrypt_file(struct file *infile, struct file *outfile,
+	char *algo, char *key, int keysize, char *iv, int enc);
 
 #endif

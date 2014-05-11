@@ -11,8 +11,6 @@
 extern int get_msg();
 extern int init_msg();
 
-// parseOptions and option args to be set, for checking correctness of type and number of arguments.
-
 int main(int argc, char *argv[])
 {
 	int rc; /* return value from syscall */

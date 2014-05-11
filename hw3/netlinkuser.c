@@ -10,19 +10,18 @@
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 struct sockaddr_nl src_addr, dest_addr;
-struct nlmsghdr *nlh = NULL;
+struct nlmsghdr *nlh;
 struct iovec iov;
 int sock_fd;
 struct msghdr msg;
 
 int init_msg()
 {
-	sock_fd=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
-	if(sock_fd < 0) {
+	sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
+	if (sock_fd < 0) {
 		printf("Connection Problem - %d", sock_fd);
 		return -1;
-	}
-	else
+	} else
 		return 0;
 }
 
@@ -32,10 +31,10 @@ char *get_msg()
 	src_addr.nl_family = AF_NETLINK;
 	src_addr.nl_pid = getpid(); /* self pid */
 
-	bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(src_addr));
+	bind(sock_fd, (struct sockaddr *)&src_addr, sizeof(src_addr));
 
 	memset(&dest_addr, 0, sizeof(dest_addr));
-	memset(&dest_addr, 0, sizeof(dest_addr));
+
 	dest_addr.nl_family = AF_NETLINK;
 	dest_addr.nl_pid = 0; /* For Linux Kernel */
 	dest_addr.nl_groups = 0; /* unicast */
