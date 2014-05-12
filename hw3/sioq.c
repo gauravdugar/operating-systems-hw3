@@ -134,48 +134,25 @@ int run_sioq(struct sioq_args *args)
 	if (atomic_read(&counter) == QUEUE_SIZE)
 		schedule();
 
-	printk("\nCONSUMERS = %d,\nQUEUE_SIZE = %d\n", CONSUMERS, QUEUE_SIZE);
-	printk("1");
-	msleep(1000);
 	id = get_wid();
-	printk("2");
-	msleep(1000);
 	args->id = id;
-	printk("3");
-	msleep(1000);
 	args->pid = current->pid;
-	printk("4");
-	msleep(1000);
 	get_fs_pwd(current->fs, &args->pwd);
-	printk("5");
-	msleep(1000);
 
 	INIT_WORK(&args->work, testPrint);
 
-	printk("6");
-	msleep(1000);
 	init_completion(&args->comp);
 
-	printk("7");
-	msleep(1000);
 	work_array[id] = args;
-	printk("8");
-	msleep(1000);
 	count = id;
 	atomic_inc(&counter);
-	printk("9");
-	msleep(1000);
 
 	args->complete = 0;
 
 	while (!queue_work(superio_workqueue, &args->work))
 		schedule();
 
-	printk("10");
-	msleep(1000);
 	mutex_unlock(&lock);
-	printk("11");
-	msleep(1000);
 	return id;
 }
 
@@ -339,7 +316,10 @@ void testPrint(struct work_struct *work)
 	id = args->id;
 	__set_fs_pwd(current->fs, &args->pwd);
 
-	msleep(1000);
+	/*
+	 * Added intentionally so that output can be observed for cancel jobs.
+	 */
+	msleep(5000);
 
 	if (args->type == ENCRYPT)
 		__crypt_file(args, 1);
