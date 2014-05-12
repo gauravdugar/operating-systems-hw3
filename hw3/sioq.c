@@ -5,10 +5,9 @@
 
 static struct workqueue_struct *superio_workqueue;
 
-struct mutex lock;
+static struct mutex lock;
 struct sioq_args **work_array;
 static int count = -1;
-extern atomic_t counter;
 
 static void testPrint(struct work_struct *work);
 
@@ -19,7 +18,7 @@ int init_sioq(void)
 	if (!IS_ERR(superio_workqueue)) {
 		workqueue_set_max_active(superio_workqueue, CONSUMERS);
 		work_array = kzalloc(sizeof(struct sioq_args) *
-			QUEUE_SIZE, GFP_KERNEL);
+				QUEUE_SIZE, GFP_KERNEL);
 		if (work_array == NULL) {
 			err = -ENOMEM;
 			stop_sioq();
@@ -145,8 +144,43 @@ int run_sioq(struct sioq_args *args)
 	return id;
 }
 
-int list_work()
+int list_work(struct jobs *job)
 {
+	struct list_buf buf;
+	struct list_args *arg = job->config;
+	struct sioq_args *args = NULL;
+	int i = 0;
+	int err = 0;
+	int temp = 0;
+	arg->ret = 0;
+	arg->additional = 0;
+	temp = (arg->start_id) % QUEUE_SIZE;
+
+	for (i = temp; i < QUEUE_SIZE; i++) {
+		if (work_array[i]) {
+			if (arg->ret ==  job->type) {
+				arg->additional = 1;
+				break;
+			}
+			args = work_array[i];
+
+			if (!work_pending(&args->work))
+				continue;
+			buf.wid = args->id;
+			buf.pid = args->pid;
+			buf.type = args->type;
+
+			err = copy_to_user(&arg->buf[arg->ret],
+				&buf, sizeof(buf));
+			arg->ret++;
+
+			if (err > 0) {
+				printk(KERN_ERR "copy_to_user error: %d\n",
+					err);
+				return -EFAULT;
+			}
+		}
+	}
 	return 0;
 }
 
@@ -179,25 +213,25 @@ static void __call_send_msg(struct sioq_args *args, char *msg)
 static void __calc_hash(struct sioq_args *args)
 {
 	struct file *file_handle;
-	char err_code[4];
+	char error[5];
 	char *hash = NULL;
 	int err = 0;
 
 	struct checksum_args *check_arg = args->checksum_arg;
-	err_code[0] = '~';
+	error[4] = '!';
 
 	err = myOpen(check_arg->file, O_RDONLY, 0, &file_handle);
 	if (err) {
 		printk(KERN_ERR "Error opening file: %d", err);
-		sprintf(err_code + 1, "%d", err);
-		__call_send_msg(args, err_code);
+		sprintf(error + 1, "%d", err);
+		__call_send_msg(args, error);
 		goto out;
 	}
 	err = calc_hash(check_arg->algo, file_handle, &hash);
 	myClose(&file_handle);
 	if (err) {
-		sprintf(err_code + 1, "%d", err);
-		__call_send_msg(args, err_code);
+		sprintf(error + 1, "%d", err);
+		__call_send_msg(args, error);
 		goto out;
 	} else {
 		printk("\nDigest = %s\n", hash);
@@ -210,7 +244,7 @@ out:
 static void __crypt_file(struct sioq_args *args, int flag)
 {
 	struct file *infile = NULL, *outfile = NULL;
-	char err_code[4];
+	char error[4];
 	int err = 0;
 	char *tmpFile;
 
@@ -219,8 +253,8 @@ static void __crypt_file(struct sioq_args *args, int flag)
 	err = myOpen(arg->file, O_RDONLY, 0, &infile);
 	if (err) {
 		printk(KERN_ERR "Error opening file: %d", err);
-		sprintf(err_code, "%d", err);
-		__call_send_msg(args, err_code);
+		sprintf(error, "%d", err);
+		__call_send_msg(args, error);
 		return;
 	}
 
@@ -230,9 +264,9 @@ static void __crypt_file(struct sioq_args *args, int flag)
 	err = myOpen(tmpFile, O_WRONLY | O_CREAT | O_TRUNC, 0666, &outfile);
 	if (err) {
 		printk(KERN_ERR "Error opening temp file: %d", err);
-		sprintf(err_code, "%d", err);
+		sprintf(error, "%d", err);
 		myClose(&infile);
-		__call_send_msg(args, err_code);
+		__call_send_msg(args, error);
 		return;
 	}
 
@@ -242,9 +276,9 @@ static void __crypt_file(struct sioq_args *args, int flag)
 	if (err) {
 		myClose(&infile);
 		vfs_unlink(outfile->f_dentry->d_parent->d_inode,
-			outfile->f_dentry);
-		sprintf(err_code, "%d", err);
-		__call_send_msg(args, err_code);
+				outfile->f_dentry);
+		sprintf(error, "%d", err);
+		__call_send_msg(args, error);
 		return;
 	} else {
 		struct inode *dir = infile->f_dentry->d_parent->d_inode;
@@ -254,8 +288,8 @@ static void __crypt_file(struct sioq_args *args, int flag)
 		if (err) {
 			myClose(&infile);
 			vfs_unlink(outfile->f_dentry->d_parent->d_inode,
-				outfile->f_dentry);
-			__call_send_msg(args, err_code);
+					outfile->f_dentry);
+			__call_send_msg(args, error);
 		} else {
 			__call_send_msg(args, "0");
 		}
@@ -269,6 +303,8 @@ void testPrint(struct work_struct *work)
 
 	id = args->id;
 	__set_fs_pwd(current->fs, &args->pwd);
+
+	msleep(1000);
 
 	if (args->type == ENCRYPT)
 		__crypt_file(args, 1);

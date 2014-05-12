@@ -27,7 +27,7 @@ struct sioq_args {
 
 extern int init_sioq(void);
 extern void stop_sioq(void);
+extern int list_work(struct jobs *job);
 extern int run_sioq(struct sioq_args *args);
 extern int cancel_work(int id);
-extern int list_work(void);
 #endif

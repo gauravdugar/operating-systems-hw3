@@ -5,12 +5,10 @@
 #include <errno.h>
 #include <string.h>
 
+#include "netlinkuser.h"
 #include "sys_ds.h"
 
 #define __NR_xjob	349	/*our private syscall number*/
-
-extern char *get_msg();
-extern int init_msg();
 
 int main(int argc, char *argv[])
 {

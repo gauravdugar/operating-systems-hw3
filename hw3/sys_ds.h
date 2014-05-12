@@ -28,4 +28,17 @@ struct checksum_args {
 	char *file;
 };
 
+struct list_args {
+	struct list_buf *buf;
+	int start_id;
+	int ret;
+	int additional;
+};
+
+struct list_buf {
+	int pid;
+	int type;
+	int wid;
+};
+
 #endif

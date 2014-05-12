@@ -19,6 +19,7 @@
 #include "crypto.h"
 #include "file.h"
 
+extern atomic_t counter;
 extern int init_netlink(void);
 extern int netlink_exit(void);
 extern void send_msg(int pid, char *msg);

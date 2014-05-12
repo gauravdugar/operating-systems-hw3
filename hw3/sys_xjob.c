@@ -2,7 +2,7 @@
 
 asmlinkage extern int(*sysptr)(void *args, int argslen);
 
-int counter;
+atomic_t counter = ATOMIC_INIT(0);
 
 static inline int fileReadCheck(char *path)
 {
@@ -147,6 +147,47 @@ static int checkArgument(struct jobs **job, void *arg, int len)
 		goto out;
 	}
 
+	if (x->work_type == LIST) {
+		struct list_args *arg;
+
+		err = access_ok(VERIFY_READ | VERIFY_WRITE, x->config,
+			sizeof(struct list_args));
+
+		if (err < 0) {
+			printk(KERN_ERR "User param Access_OK failed: %d\n",
+				err);
+			err = -EINVAL;
+			goto out;
+		}
+
+		arg = kzalloc(sizeof(struct list_args), GFP_KERNEL);
+		if (!arg) {
+			err = -ENOMEM;
+			goto out;
+		}
+
+		err = copy_from_user(arg, x->config, sizeof(struct list_args));
+		if (err > 0) {
+			printk(KERN_ERR "copy_from_user failed: %d\n", err);
+			err = -EINVAL;
+			kfree(arg);
+			goto out;
+		}
+
+		x->config = arg;
+
+		err = access_ok(VERIFY_READ | VERIFY_WRITE, arg->buf,
+			x->type * sizeof(struct list_buf));
+		if (err < 0) {
+			printk(KERN_ERR "User param Access_OK failed: %d\n",
+				err);
+			err = -EINVAL;
+			kfree(arg);
+			goto out;
+		}
+		return 0;
+	}
+
 	if (x->type == ENCRYPT || x->type == DECRYPT)
 		err = check_crypt_args(x);
 
@@ -177,12 +218,27 @@ asmlinkage int xjob(void *args, int argslen)
 		return err;
 
 	if (job->work_type == CANCEL) {
-		return cancel_work(job->type);
+		err = cancel_work(job->type);
 		goto out;
 	}
 
 	if (job->work_type == LIST) {
-		return list_work();
+		err = list_work(job);
+		if (err < 0) {
+			kfree(job->config);
+			printk(KERN_ERR "Error during job listing: %d", err);
+			goto out;
+		}
+
+		err = copy_to_user(((struct jobs *)args)->config,
+			job->config, sizeof(struct list_args));
+
+		if (err > 0) {
+			printk(KERN_ERR "copy_to_user error: %d\n", err);
+			err = -EFAULT;
+		}
+
+		kfree(job->config);
 		goto out;
 	}
 
@@ -209,7 +265,6 @@ static int __init init_sys_xjob(void)
 		sysptr = xjob;
 	init_sioq();
 	init_netlink();
-	counter = 0;
 	return 0;
 }
 
