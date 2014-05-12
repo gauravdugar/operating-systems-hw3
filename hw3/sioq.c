@@ -1,7 +1,19 @@
 #include "sys_xjob.h"
 
-#define CONSUMERS 1
-#define QUEUE_SIZE 5
+#ifdef CONSUMERS
+	#if CONSUMERS <= 0
+		#define CONSUMERS 2
+	#endif
+	#else
+		#define CONSUMERS 2
+#endif
+#ifdef QUEUE_SIZE
+	#if QUEUE_SIZE <= 0
+		#define QUEUE_SIZE 1024
+	#endif
+	#else
+		#define QUEUE_SIZE 1024
+#endif
 
 static struct workqueue_struct *superio_workqueue;
 
@@ -122,25 +134,48 @@ int run_sioq(struct sioq_args *args)
 	if (atomic_read(&counter) == QUEUE_SIZE)
 		schedule();
 
+	printk("\nCONSUMERS = %d,\nQUEUE_SIZE = %d\n", CONSUMERS, QUEUE_SIZE);
+	printk("1");
+	msleep(1000);
 	id = get_wid();
+	printk("2");
+	msleep(1000);
 	args->id = id;
+	printk("3");
+	msleep(1000);
 	args->pid = current->pid;
+	printk("4");
+	msleep(1000);
 	get_fs_pwd(current->fs, &args->pwd);
+	printk("5");
+	msleep(1000);
 
 	INIT_WORK(&args->work, testPrint);
 
+	printk("6");
+	msleep(1000);
 	init_completion(&args->comp);
 
+	printk("7");
+	msleep(1000);
 	work_array[id] = args;
+	printk("8");
+	msleep(1000);
 	count = id;
 	atomic_inc(&counter);
+	printk("9");
+	msleep(1000);
 
 	args->complete = 0;
 
 	while (!queue_work(superio_workqueue, &args->work))
 		schedule();
 
+	printk("10");
+	msleep(1000);
 	mutex_unlock(&lock);
+	printk("11");
+	msleep(1000);
 	return id;
 }
 

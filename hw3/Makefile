@@ -20,7 +20,7 @@ crypt: crypt.c
 	gcc -Wall -Werror -I/lib/modules/$(shell uname -r)/build/arch/x86/include crypt.c -c -g -o crypt.o
 
 xjob:
-	make -Wall -Werror -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	KCPPFLAGS="${ARGS}" make -Wall -Werror -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 checksum: checksum.c
 	gcc -Wall -Werror -I/lib/modules/$(shell uname -r)/build/arch/x86/include checksum.c -c -g -o checksum.o
